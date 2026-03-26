@@ -36,7 +36,16 @@ Ideal para quem quer começar com o mínimo de fricção possível. Não precisa
 </p>
 
 * **Fluxo:** Preencha o Google Formulário → Apps Script processa com Gemini → Nota estruturada salva no Google Docs.
+
+**O Resultado no Google Docs:**
+O código formata o texto extraindo Contexto, Decisões e Próximos Passos diretamente no seu documento:
+<p align="center">
+  <img src="png/236735d6-13.png" width="800">
+</p>
+
 * 👉 **[Clique aqui para ver o tutorial e o código da Opção A](Instruções%20Forms%20Docs%20Google%20App%20Scripts.md)**
+
+---
 
 ### [Opção B: A Mais Automatizada (Telegram + Make + Obsidian)](Instruções%20Telegram%20Bot%20Obsidian.md)
 Ideal para quem já usa o Obsidian e quer capturar ideias via áudio ou texto direto pelo celular.
@@ -50,9 +59,9 @@ Ideal para quem já usa o Obsidian e quer capturar ideias via áudio ou texto di
 
 ---
 
-## 🌌 O Resultado (Obsidian)
+## 🌌 O Resultado Final (Grafo no Obsidian)
 
-Com o tempo, suas notas soltas se transformam em uma rede de conhecimento conectada (Grafo), onde ideias do passado ajudam a resolver problemas do futuro:
+Com o tempo, se você optar pelo ecossistema do Obsidian (Opção B), suas notas soltas se transformam em uma rede de conhecimento conectada (Grafo), onde ideias do passado ajudam a resolver problemas do futuro:
 
 <p align="center">
   <img src="png/236735d6-17.png" width="800">
