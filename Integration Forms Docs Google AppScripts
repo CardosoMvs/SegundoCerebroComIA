@@ -1,0 +1,194 @@
+// ==========================================
+// CONFIGURAÇÕES INICIAIS (Preencha aqui)
+// ==========================================
+
+const GEMINI_API_KEY = 'COLE_SUA_CHAVE_API_AQUI'; 
+const GOOGLE_DOC_ID = 'COLE_O_ID_DO_SEU_DOC_AQUI'; 
+
+function processarNovaNota(e) {
+  const notaBaguncada = e.values[1] || ""; 
+  const linkImagem = e.values[2] || "";
+
+  if (!notaBaguncada && !linkImagem) return;
+
+  const prompt = `Você é um assistente de documentação técnica. Transforme as informações recebidas em um registro estruturado.
+
+  REGRAS DE FORMATAÇÃO:
+  - NÃO use tabelas sob nenhuma hipótese.
+  - Formate como uma lista vertical de texto simples.
+  - Use exatamente estes tópicos (em negrito usando **): **Contexto**, **Decisão / Ideia principal**, **Alternativas / Observações**, **Próximos passos**.
+
+  Se alguma informação não estiver clara, indique como "não especificado".
+  Texto de apoio do usuário: ${notaBaguncada}`; 
+
+  let textoEstruturado = "";
+  if (notaBaguncada) {
+    textoEstruturado = chamarGemini(prompt);
+  } else {
+    textoEstruturado = "Nenhum texto fornecido. Apenas imagem anexada.";
+  }
+
+  let fileBlob = null;
+  let fileIdParaDeletar = null;
+  let nomeDoArquivo = "";
+
+  if (linkImagem) {
+    const urls = linkImagem.split(',');
+    fileIdParaDeletar = extrairIdDoDrive(urls[0]);
+    
+    if (fileIdParaDeletar) {
+      try {
+        const file = DriveApp.getFileById(fileIdParaDeletar);
+        fileBlob = file.getBlob();
+        nomeDoArquivo = file.getName();
+      } catch (erro) {
+        Logger.log("Erro ao pegar a imagem do Drive: " + erro);
+      }
+    }
+  }
+
+  if (textoEstruturado || fileBlob) {
+    const salvoComSucesso = salvarNoDoc(textoEstruturado, fileBlob);
+    
+    if (salvoComSucesso && fileIdParaDeletar) {
+      limparLixoDoDrive(fileIdParaDeletar, nomeDoArquivo);
+    }
+  }
+}
+
+// ==========================================
+// FUNÇÃO CAÇA-FANTASMAS (CORRIGIDA)
+// ==========================================
+function limparLixoDoDrive(idOriginal, nomeDoArquivo) {
+  Utilities.sleep(8000);
+
+  const agora = new Date();
+  const raiz = DriveApp.getRootFolder();
+
+  // 1. Manda o arquivo original pra lixeira pelo ID
+  try {
+    const arquivo = DriveApp.getFileById(idOriginal);
+    const nomeLog = arquivo.getName();
+    arquivo.setTrashed(true);
+    Logger.log("✅ Original na lixeira: " + nomeLog);
+  } catch (e) {
+    Logger.log("❌ Erro ao apagar original (ID: " + idOriginal + "): " + e);
+  }
+
+  // 2. Aguarda e caça fantasmas na raiz que contenham o nome base
+  Utilities.sleep(3000);
+
+  if (nomeDoArquivo) {
+    const nomeBase = nomeDoArquivo.replace(/\.[^/.]+$/, "").toLowerCase();
+    const todosNaRaiz = raiz.getFiles();
+
+    while (todosNaRaiz.hasNext()) {
+      const f = todosNaRaiz.next();
+      const nomeFantasma = f.getName().toLowerCase();
+      const diff = (agora - f.getDateCreated()) / (1000 * 60);
+
+      if (nomeFantasma.includes(nomeBase) && diff < 30) {
+        try {
+          f.setTrashed(true);
+          Logger.log("✅ Fantasma na lixeira: " + f.getName());
+        } catch (e) {
+          Logger.log("❌ Erro ao apagar fantasma '" + f.getName() + "': " + e);
+        }
+      }
+    }
+  }
+}
+
+// ==========================================
+// FUNÇÕES AUXILIARES
+// ==========================================
+function extrairIdDoDrive(urlStr) {
+  const match = urlStr.match(/id=([a-zA-Z0-9_-]+)/);
+  return match ? match[1] : null;
+}
+
+function chamarGemini(promptTexto) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+  
+  const payload = {
+    "contents": [{
+      "parts": [{"text": promptTexto}]
+    }]
+  };
+  
+  const options = {
+    "method": "post",
+    "contentType": "application/json",
+    "payload": JSON.stringify(payload)
+  };
+  
+  try {
+    const response = UrlFetchApp.fetch(url, options);
+    const json = JSON.parse(response.getContentText());
+    
+    let texto = json.candidates[0].content.parts[0].text;
+    texto = texto.replace(/\|/g, ''); 
+    return texto;
+  } catch (error) {
+    Logger.log("Erro na API da IA: " + error);
+    return "Erro ao processar o texto com a IA.";
+  }
+}
+
+function salvarNoDoc(textoFormatado, imagemBlob) {
+  const doc = DocumentApp.openById(GOOGLE_DOC_ID);
+  const body = doc.getBody();
+  let sucesso = true; 
+  
+  const dataHora = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd/MM/yyyy 'às' HH:mm");
+  body.appendParagraph(`Registro processado em: ${dataHora}`).setHeading(DocumentApp.ParagraphHeading.HEADING2);
+  
+  if (textoFormatado) {
+    const linhas = textoFormatado.split('\n');
+    
+    for (let i = 0; i < linhas.length; i++) {
+      let linha = linhas[i].trim();
+      if (linha === "") continue;
+
+      linha = linha.replace(/^\*\s+/, '');
+      const paragrafo = body.appendParagraph("");
+      const partes = linha.split('**');
+
+      for (let j = 0; j < partes.length; j++) {
+        if (partes[j] !== "") {
+          const elementoTexto = paragrafo.appendText(partes[j]);
+          if (j % 2 !== 0) {
+            elementoTexto.setBold(true);
+          } else {
+            elementoTexto.setBold(false);
+          }
+        }
+      }
+    }
+  }
+  
+  if (imagemBlob) {
+    try {
+      body.appendImage(imagemBlob);
+    } catch(e) {
+      Logger.log("A imagem não pôde ser anexada: " + e);
+      body.appendParagraph("[Erro ao tentar anexar a imagem original]");
+      sucesso = false; 
+    }
+  }
+  
+  body.appendHorizontalRule();
+  doc.saveAndClose();
+  
+  return sucesso; 
+}
+
+function diagnosticar(idArquivo) {
+  const arquivo = DriveApp.getFileById(idArquivo);
+  Logger.log("Nome: " + arquivo.getName());
+  const parents = arquivo.getParents();
+  while (parents.hasNext()) {
+    const p = parents.next();
+    Logger.log("Parent: " + p.getName() + " | ID: " + p.getId());
+  }
+}
