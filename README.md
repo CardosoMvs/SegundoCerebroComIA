@@ -2,7 +2,7 @@
 
 Bem-vindo ao repositório do projeto **O SEGUNDO CÉREBRO COM IA: como parar de perder contexto e decisões importantes**. 
 
-Este material foi originado da apresentação no "Café com bolo, ciência e IA" (UFG / LAPIG / Embrapa), criada pelo Eng. Florestal Marcos Cardoso.
+Este material foi originado da apresentação no "Café com bolo, ciência e IA" (UFG / LAPIG).
 
 <p align="center">
   <img src="png/236735d6-01.png" width="600">
